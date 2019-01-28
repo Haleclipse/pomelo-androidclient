@@ -51,47 +51,64 @@ public class PomeloClient {
 	}
 
 	/**
-	 * Initialize pomelo client.
-	 * 
-	 */
-	public void init() {
-		socket.connect(new IOCallback() {
-			public void onConnect() {
-				logger.info("pomeloclient is connected.");
-			}
+ * Initialize pomelo client.
+ * 
+ */
+public void init() {
+       
+       socket.connect();
+       
+       socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
+           
+           @Override
+           public void call(final Object... args) {
+               logger.info("connection is connected.");
+           }
+       });
+       
+       socket.on(Socket.EVENT_CONNECT_TIMEOUT, new Emitter.Listener() {
+          
+           @Override
+           public void call(Object... args) {
+               logger.info("connection is timeout.");
+               emit("connect_timeout", null);
+           }
+       });
 
-			public void onMessage(JSONObject json, IOAcknowledge ack) {
-				logger.warning("pomelo send message of string.");
-			}
+       socket.on(Socket.EVENT_CONNECT_ERROR, new Emitter.Listener() {
+          
+           @Override
+           public void call(Object... args) {
+               logger.info("connection is error.");
+         emit("connect_error", null);
+           }
+       });
 
-			// get messages from the server side
-			public void onMessage(String data, IOAcknowledge ack) {
-				if (data.indexOf(JSONARRAY_FLAG) == 0) {
-					processMessageBatch(data);
-				} else {
-					processMessage(data);
-				}
-			}
+       socket.on(Socket.EVENT_DISCONNECT, new Emitter.Listener() {
 
-			public void onError(SocketIOException socketIOException) {
-				logger.info("connection is terminated.");
-				emit("disconnect", null);
-				socket = null;
-				socketIOException.printStackTrace();
-			}
+           @Override
+           public void call(Object... args) {
+               logger.info("connection is disconnected");
+               emit("connect_disconnect", null);
+               socket = null;
+           }
+       });
+       
+       socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
+           
+           @Override
+           public void call(Object... args) {
+               logger.info("response: " + args[0].toString());
+               if (args[0].toString().indexOf(JSONARRAY_FLAG) == 0) {
+                   processMessageBatch(args[0].toString());
+               } else {
+                   processMessage(args[0].toString());
+               }
+           }
+       });
+       
+}
 
-			public void onDisconnect() {
-				logger.info("connection is terminated.");
-				emit("disconnect", null);
-				socket = null;
-			}
-
-			public void on(String event, IOAcknowledge ack, Object... args) {
-				logger.info("socket.io emit events.");
-			}
-
-		});
-	}
 
 	/**
 	 * Send message to the server side.
